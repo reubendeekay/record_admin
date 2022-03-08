@@ -252,45 +252,44 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
                   setState(() {
                     isLoading = true;
                   });
-                  List<String> trackurls = [];
-                  final result = await FirebaseStorage.instance
-                      .ref('covers/${DateTime.now().toIso8601String()}')
-                      .putFile(cover);
-                  final url = await result.ref.getDownloadURL();
 
-                  await Future.wait(audioFiles.map((file) async {
-                    final result = await FirebaseStorage.instance
-                        .ref('audios/${DateTime.now().toIso8601String()}')
-                        .putFile(file);
-                    final url = await result.ref.getDownloadURL();
-                    trackurls.add(url);
-                  }));
-                  final trackList = trackurls
+                  final trackList = widget.album.tracks
                       .map((e) => Track(
-                            trackurls.indexOf(e),
-                            // descriptions[trackurls.indexOf(e)],
-                            names[trackurls.indexOf(e)],
-                            descriptions[trackurls.indexOf(e)],
-                            trackurls[trackurls.indexOf(e)],
-                            url,
+                            widget.album.tracks.indexOf(e),
+                            // descriptions[widget.album.tracks.indexOf(e)],
+                            names[widget.album.tracks.indexOf(e)].isNotEmpty ??
+                                widget
+                                    .album
+                                    .tracks[widget.album.tracks.indexOf(e)]
+                                    .title,
+                            descriptions[widget.album.tracks.indexOf(e)]
+                                    .isNotEmpty ??
+                                widget
+                                    .album
+                                    .tracks[widget.album.tracks.indexOf(e)]
+                                    .content,
+                            widget.album.tracks[widget.album.tracks.indexOf(e)]
+                                .url,
+                            widget.album.tracks[widget.album.tracks.indexOf(e)]
+                                .cover,
                             null,
                             DateTime.now().toIso8601String(),
                           ))
                       .toList();
 
-                  // try {
-                  //   await Provider.of<MediaProvider>(context, listen: false)
-                  //       .uploadMedia(Album(
-                  //           DateTime.now().millisecondsSinceEpoch,
-                  //           title,
-                  //           description,
-                  //           url,
-                  //           trackList));
-                  // } catch (e) {
-                  //   setState(() {
-                  //     isLoading = false;
-                  //   });
-                  // }
+                  try {
+                    await Provider.of<MediaProvider>(context, listen: false)
+                        .updateAlbum(Album(
+                            DateTime.now().millisecondsSinceEpoch,
+                            title,
+                            description,
+                            widget.album.cover,
+                            trackList));
+                  } catch (e) {
+                    setState(() {
+                      isLoading = false;
+                    });
+                  }
 
                   setState(() {
                     isLoading = false;
@@ -388,31 +387,8 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
           Expanded(
             child: Column(
               children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: SizedBox(
-                        child: Text(
-                          file.title,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ),
-                    InkWell(
-                      onTap: () {
-                        audioFiles.remove(file);
-                        setState(() {});
-                      },
-                      child: const Icon(
-                        Icons.delete,
-                        color: Colors.red,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
                 myTextField(
-                    hint: 'Name of audio',
+                    hint: file.title,
                     onChanged: (val) {
                       setState(() {
                         names[index] = val;
@@ -420,7 +396,7 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
                     }),
                 const SizedBox(height: 10),
                 myTextField(
-                    hint: 'Subtitles',
+                    hint: file.content,
                     onChanged: (val) {
                       setState(() {
                         descriptions[index] = val;

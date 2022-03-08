@@ -15,4 +15,12 @@ class MediaProvider with ChangeNotifier {
     await FirebaseFirestore.instance.collection('albums').doc(id).delete();
     notifyListeners();
   }
+
+  Future<void> updateAlbum(Album album) async {
+    await FirebaseFirestore.instance
+        .collection('albums')
+        .doc(album.id.toString())
+        .update(album.toJson());
+    notifyListeners();
+  }
 }
