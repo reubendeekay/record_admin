@@ -159,7 +159,7 @@ class _AuthScreenState extends State<AuthScreen> {
                           if (_formKey.currentState.validate()) {
                             await Provider.of<AuthProvider>(context,
                                     listen: false)
-                                .signIn(email, password);
+                                .signIn(email.trim(), password.trim());
                             Get.to(() => const Dashboard());
                           }
                         },

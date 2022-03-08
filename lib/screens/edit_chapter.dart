@@ -78,6 +78,7 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
                               Provider.of<MediaProvider>(context, listen: false)
                                   .deleteAlbum(widget.album.id.toString());
                               Navigator.of(context).pop();
+                              Navigator.of(context).pop();
                             },
                             child: const Text(
                               'Yes',
@@ -116,7 +117,7 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
         ),
         elevation: 0,
         title: const Text(
-          'Add Audio',
+          'Edit Chapter',
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
       ),
@@ -233,11 +234,65 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
                       child: const Icon(Icons.music_note),
                     ),
                   ),
+                ...List.generate(audioFiles.length, (index) {
+                  descriptions.add('');
+                  names.add('');
+
+                  return albumFileAudioTile(audioFiles[index], index);
+                }),
+                const SizedBox(
+                  height: 20,
+                ),
+                RaisedButton(
+                  onPressed: () async {
+                    List<String> trackurls = [];
+
+                    await Future.wait(audioFiles.map((file) async {
+                      final result = await FirebaseStorage.instance
+                          .ref('audios/${DateTime.now().toIso8601String()}')
+                          .putFile(file);
+                      final url = await result.ref.getDownloadURL();
+                      trackurls.add(url);
+                    }));
+                    final trackList = trackurls
+                        .map((e) => Track(
+                              trackurls.indexOf(e),
+                              // descriptions[trackurls.indexOf(e)],
+                              names[trackurls.indexOf(e)],
+                              descriptions[trackurls.indexOf(e)],
+                              e,
+                              widget.album.cover,
+                              null,
+                              DateTime.now().toIso8601String(),
+                            ))
+                        .toList();
+
+                    try {
+                      await Provider.of<MediaProvider>(context, listen: false)
+                          .addTrack(widget.album.id.toString(), trackList);
+                    } catch (e) {
+                      setState(() {
+                        isLoading = false;
+                      });
+                    }
+
+                    setState(() {
+                      isLoading = false;
+                    });
+                    Navigator.of(context).pop();
+                  },
+                  child: isLoading ? const MyLoader() : const Text('Add'),
+                ),
+                if (audioFiles.isNotEmpty)
+                  Container(
+                      margin: const EdgeInsets.symmetric(vertical: 10),
+                      child: const Text('Existing Tracks')),
                 ...List.generate(widget.album.tracks.length, (index) {
                   descriptions.add('');
                   names.add('');
 
-                  return albumAudioTile(widget.album.tracks[index], index);
+                  return albumAudioTile(context, widget.album.tracks[index],
+                      index, widget.album.id.toString());
                 }),
                 const SizedBox(
                   height: 60,
@@ -349,7 +404,8 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
     );
   }
 
-  Widget albumAudioTile(Track file, int index) {
+  Widget albumAudioTile(
+      BuildContext context, Track file, int index, String id) {
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 5),
       decoration: BoxDecoration(
@@ -397,6 +453,102 @@ class _EditChapterScreenState extends State<EditChapterScreen> {
                 const SizedBox(height: 10),
                 myTextField(
                     hint: file.content,
+                    onChanged: (val) {
+                      setState(() {
+                        descriptions[index] = val;
+                      });
+                    }),
+                RaisedButton(
+                    onPressed: () async {
+                      await Provider.of<MediaProvider>(context)
+                          .deleteTrack(id, index);
+
+                      widget.album.tracks.removeAt(index);
+                    },
+                    color: Theme.of(context).cardColor,
+                    child: const Icon(
+                      Icons.delete,
+                      color: Colors.red,
+                    ))
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget albumFileAudioTile(File file, int index) {
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 10),
+      child: Row(
+        children: [
+          InkWell(
+            onTap: () async {
+              FilePickerResult result =
+                  await FilePicker.platform.pickFiles(allowMultiple: false);
+
+              if (result != null) {
+                setState(() {
+                  audioFiles.add(File(result.paths.first));
+                });
+              } else {
+                // User canceled the picker
+              }
+            },
+            child: Container(
+              padding: const EdgeInsets.all(10),
+              child: const Icon(Icons.music_note),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                shape: BoxShape.circle,
+              ),
+            ),
+          ),
+          const SizedBox(
+            width: 10,
+          ),
+          Expanded(
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        child: Text(
+                          file.path.split('/').last,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ),
+                    InkWell(
+                      onTap: () {
+                        audioFiles.remove(file);
+                        setState(() {});
+                      },
+                      child: const Icon(
+                        Icons.delete,
+                        color: Colors.red,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                myTextField(
+                    hint: 'Name of audio',
+                    onChanged: (val) {
+                      setState(() {
+                        names[index] = val;
+                      });
+                    }),
+                const SizedBox(height: 10),
+                myTextField(
+                    hint: 'Subtitles',
                     onChanged: (val) {
                       setState(() {
                         descriptions[index] = val;
